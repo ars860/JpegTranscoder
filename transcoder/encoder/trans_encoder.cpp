@@ -151,9 +151,6 @@ std::string trans_encoder::encode(std::string &headers, std::vector<std::array<i
 
     numeric_result.push(zigzag_encoded);
 
-//    std::string huffman_message = {huffman_HXX_coef.begin(), huffman_HXX_coef.end()};
-//    std::string huffman_encoded = huffman::encode(huffman_message).first;
-
     std::string huffman_message_DC = {huffman_HXX_DC.begin(), huffman_HXX_DC.end()};
     std::string huffman_encoded_DC = huffman::encode(huffman_message_DC).first;
 
@@ -161,12 +158,6 @@ std::string trans_encoder::encode(std::string &headers, std::vector<std::array<i
     std::string huffman_encoded_AC = huffman::encode(huffman_message_AC).first;
 
     bit_vector huffman_result;
-//    assert(huffman_encoded.size() < 0xffffff);
-//    huffman_result.push_byte(huffman_encoded.size() & 0xff);
-//    huffman_result.push_byte((huffman_encoded.size() >> 8) & 0xff);
-//    huffman_result.push_byte((huffman_encoded.size() >> 16) & 0xff);
-//    bit_vector huffman_bits = bit_vector::from_string(huffman_encoded);
-//    huffman_result.push(huffman_bits);
 
     assert(huffman_encoded_DC.size() < 0xffffff);
     huffman_result.push_byte(huffman_encoded_DC.size() & 0xff);
@@ -187,17 +178,16 @@ std::string trans_encoder::encode(std::string &headers, std::vector<std::array<i
     std::string initial_file_content = read_file_to_string(initial_file);
     if (initial_file_content.size() < (result.size() + huffman_result.size()) / 8 &&
         initial_file_content.size() < (result.size() + numeric_result.size()) / 8) {
-//        result.push_byte(0xfa);
-        std::cout << "Raw encoded\n";
+//        std::cout << "Raw encoded\n";
         return initial_file_content;
     }
 
     if (huffman_result.size() < numeric_result.size()) {
-        std::cout << "Huffman encoded\n";
+//        std::cout << "Huffman encoded\n";
         result.push_byte(0x00);
         result.push(huffman_result);
     } else {
-        std::cout << "Numeric encoded\n";
+//        std::cout << "Numeric encoded\n";
         result.push_byte(0xff);
         result.push(numeric_result);
     }

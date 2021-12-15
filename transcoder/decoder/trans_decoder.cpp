@@ -222,21 +222,6 @@ std::string TransDecoder::decode() {
     size_t header_len = (uint8_t) content[0] + ((uint8_t) content[1] << 8);
     int pos = 16;
 
-//    bit_vector bitvec = bit_vector::from_string(content);
-//    unsigned char header_len_bits = content[0];
-//    size_t header_len = 0;
-//    int pos = 8;
-//    for (int pov = 1; pos < 8 + header_len_bits; pos++, pov *= 2) {
-//        if (bitvec[pos]) {
-//            header_len += pov;
-//        }
-//    }
-//
-//    // align
-//    while (pos % 8 != 0) {
-//        pos++;
-//    }
-
     headers_start = pos;
     // Parse headers
     auto result_code = parse_headers();
@@ -264,7 +249,6 @@ std::string TransDecoder::decode() {
     result.push(encoded_mcus);
 
     return result.to_string();
-//    write_to_file(result.to_string(), output_name);
 }
 
 bit_vector TransDecoder::huffman_encode_mcus(std::vector<std::array<int, 64>> &mcus) {
@@ -381,8 +365,6 @@ TransDecoder &TransDecoder::file(const std::string &fileName) {
 kpeg::Decoder::ResultCode TransDecoder::try_parse_raw() {
     kpeg::Decoder tmp_decoder;
     tmp_decoder.open(file_name);
-//    tmp_decoder.start_from(headers_start / 8);
-//    tmp_decoder.decode_only_header();
 
     auto result_code = tmp_decoder.decodeImageFile();
 
