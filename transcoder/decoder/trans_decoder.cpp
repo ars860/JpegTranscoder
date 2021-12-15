@@ -54,18 +54,27 @@ std::map<uint64_t, uint64_t> freqnletters2dict(const std::vector<uint64_t> &freq
 
 std::vector<std::array<int, 64>> TransDecoder::decode_mcus_huffman_HXX(std::string &body) {
     size_t pos = 0;
-    size_t huffman_encoded_size = parse_three_bytes_value(pos, body); // 19461
+    size_t huffman_encoded_size_DC = parse_three_bytes_value(pos, body); // 19461
 
-    std::string huffman_string = body.substr(pos / 8, huffman_encoded_size); // 3 64 32 68 -128
-    pos += huffman_encoded_size * 8;
+    std::string huffman_string_DC = body.substr(pos / 8, huffman_encoded_size_DC); // 3 64 32 68 -128
+    pos += huffman_encoded_size_DC * 8;
 
-    std::string rle_decoded_str = huffman::decode(huffman_string);
-    std::vector<unsigned char> rle_decoded_uchar = {rle_decoded_str.begin(), rle_decoded_str.end()};
-    std::vector<uint64_t> rle_decoded = {rle_decoded_uchar.begin(), rle_decoded_uchar.end()};
+    std::string rle_decoded_str_DC = huffman::decode(huffman_string_DC);
+    std::vector<unsigned char> rle_decoded_uchar_DC = {rle_decoded_str_DC.begin(), rle_decoded_str_DC.end()};
+    std::vector<uint64_t> rle_decoded_DC = {rle_decoded_uchar_DC.begin(), rle_decoded_uchar_DC.end()};
+
+    size_t huffman_encoded_size_AC = parse_three_bytes_value(pos, body); // 19461
+
+    std::string huffman_string_AC = body.substr(pos / 8, huffman_encoded_size_AC); // 3 64 32 68 -128
+    pos += huffman_encoded_size_AC * 8;
+
+    std::string rle_decoded_str_AC = huffman::decode(huffman_string_AC);
+    std::vector<unsigned char> rle_decoded_uchar_AC = {rle_decoded_str_AC.begin(), rle_decoded_str_AC.end()};
+    std::vector<uint64_t> rle_decoded_AC = {rle_decoded_uchar_AC.begin(), rle_decoded_uchar_AC.end()};
 
     bit_vector zigzag_val = bit_vector::from_substring(body, pos, body.size() * 8 - pos);
 
-    auto zigzags_decoded = decode_zigzags(rle_decoded, zigzag_val);
+    auto zigzags_decoded = decode_zigzags(rle_decoded_DC, rle_decoded_AC, zigzag_val);
 
     return zigzags_decoded;
 }
@@ -107,11 +116,11 @@ std::vector<std::array<int, 64>> TransDecoder::decode_mcus_numeric(std::string &
     return zigzags_decoded;
 }
 
-std::vector<std::array<int, 64>>
-TransDecoder::decode_zigzags(const std::vector<uint64_t> &rle_decoded, const bit_vector &zigzag_val) {
-    for (uint64_t v: rle_decoded) {
-        assert(v <= 0xff);
-    }
+std::vector<std::array<int, 64>> TransDecoder::decode_zigzags(const std::vector<uint64_t> &rle_decoded,
+                                                              const bit_vector &zigzag_val) {
+//    for (uint64_t v: rle_decoded) {
+//        assert(v <= 0xff);
+//    }
 
     std::vector<std::array<int, 64>> res;
     res.emplace_back();
@@ -155,12 +164,62 @@ TransDecoder::decode_zigzags(const std::vector<uint64_t> &rle_decoded, const bit
     return res;
 }
 
+std::vector<std::array<int, 64>> TransDecoder::decode_zigzags(const std::vector<uint64_t> &rle_decoded_DC,
+                                                              const std::vector<uint64_t> &rle_decoded_AC,
+                                                              const bit_vector &zigzag_val) {
+    std::vector<std::array<int, 64>> res;
+    res.emplace_back();
+
+    size_t pos_in_vals = 0;
+    size_t pos_in_cur_comp = 0;
+
+    size_t pos_AC = 0;
+    size_t pos_DC = 0;
+
+    while (pos_AC < rle_decoded_AC.size() || pos_DC < rle_decoded_DC.size()) {
+        uint64_t cur = pos_in_cur_comp == 0 ? rle_decoded_DC[pos_DC++] : rle_decoded_AC[pos_AC++];
+
+        if (cur == 0) {
+            if (pos_in_cur_comp == 0) {
+                res[res.size() - 1][pos_in_cur_comp++] = 0;
+            } else {
+                for (; pos_in_cur_comp < 64; pos_in_cur_comp++) {
+                    res[res.size() - 1][pos_in_cur_comp] = 0;
+                }
+            }
+        } else {
+            // first 4 bits is value len in bits
+            int value_bits_cnt = cur & 0xf;
+            // second 4 bits is zeros cnt
+            int zeros_cnt = (cur >> 4) & 0xf;
+
+            for (int i = 0; i < zeros_cnt; i++) {
+                res[res.size() - 1][pos_in_cur_comp++] = 0;
+            }
+
+            // read value from bits
+            int16_t value = kpeg::bitStringtoValue(zigzag_val.subbitvec(pos_in_vals, value_bits_cnt).to_bit_string());
+            pos_in_vals += value_bits_cnt;
+            res[res.size() - 1][pos_in_cur_comp++] = value;
+        }
+
+        if (pos_in_cur_comp == 64) {
+            // go to next component
+            res.emplace_back();
+            pos_in_cur_comp = 0;
+        }
+    }
+
+    res.pop_back();
+    return res;
+}
+
 std::string TransDecoder::decode() {
     if (try_parse_raw() == kpeg::Decoder::ResultCode::DECODE_DONE) {
         return content;
     }
 
-    size_t header_len = (uint8_t)content[0] + ((uint8_t)content[1] << 8);
+    size_t header_len = (uint8_t) content[0] + ((uint8_t) content[1] << 8);
     int pos = 16;
 
 //    bit_vector bitvec = bit_vector::from_string(content);

@@ -11,9 +11,10 @@ class TransDecoder {
 public:
     TransDecoder();
 
-    TransDecoder& file(const std::string &fileName);
+    TransDecoder &file(const std::string &fileName);
 
     std::string decode();
+
 private:
     kpeg::Decoder::ResultCode parse_headers();
 
@@ -29,8 +30,12 @@ private:
 
     std::vector<std::array<int, 64>> decode_mcus_numeric(std::string &body);
 
-    static std::vector<std::array<int, 64>>
-    decode_zigzags(const std::vector<uint64_t> &rle_decoded, const bit_vector &zigzag_val);
+    static std::vector<std::array<int, 64>> decode_zigzags(const std::vector<uint64_t> &rle_decoded,
+                                                           const bit_vector &zigzag_val);
+
+    static std::vector<std::array<int, 64>> decode_zigzags(const std::vector<uint64_t> &rle_decoded_DC,
+                                                           const std::vector<uint64_t> &rle_decoded_AC,
+                                                           const bit_vector &zigzag_val);
 
     bit_vector huffman_encode_mcus(std::vector<std::array<int, 64>> &mcus);
 

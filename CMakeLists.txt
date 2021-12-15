@@ -57,12 +57,12 @@ set_target_properties(arithmetic_encoder PROPERTIES LINKER_LANGUAGE CXX)
 
 set(TRANSCODER_SOURCES
         transcoder/transcoder_utils.cpp transcoder/transcoder_utils.h
-        transcoder/encoder/trans_encoder.cpp transcoder/encoder/trans_encoder.h
-        transcoder/decoder/trans_decoder.cpp transcoder/decoder/trans_decoder.h
         )
 
 add_executable(transcoder_test
         transcoder/test.cpp
+        transcoder/encoder/trans_encoder.cpp transcoder/encoder/trans_encoder.h
+        transcoder/decoder/trans_decoder.cpp transcoder/decoder/trans_decoder.h
         ${KPEG_SOURCES}
         ${ARITHMETIC_SOURCES}
         ${TRANSCODER_SOURCES}
@@ -72,6 +72,7 @@ target_link_libraries(transcoder_test wsock32 ws2_32)
 
 add_executable(encoder
         transcoder/encoder/main.cpp
+        transcoder/encoder/trans_encoder.cpp transcoder/encoder/trans_encoder.h
         ${KPEG_SOURCES}
         ${ARITHMETIC_SOURCES}
         ${TRANSCODER_SOURCES}
@@ -82,6 +83,7 @@ target_link_options(encoder PRIVATE -static-libgcc -static-libstdc++)
 
 add_executable(decoder
         transcoder/decoder/main.cpp
+        transcoder/decoder/trans_decoder.cpp transcoder/decoder/trans_decoder.h
         ${KPEG_SOURCES}
         ${ARITHMETIC_SOURCES}
         ${TRANSCODER_SOURCES}

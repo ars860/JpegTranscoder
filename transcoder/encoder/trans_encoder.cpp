@@ -25,7 +25,9 @@ std::string trans_encoder::encode(std::string &headers, std::vector<std::array<i
     std::vector<uint64_t> zigzag_rle;
     bit_vector zigzag_val;
 
-    std::vector<char> huffman_HXX_test;
+    std::vector<char> huffman_HXX_coef;
+    std::vector<char> huffman_HXX_DC;
+    std::vector<char> huffman_HXX_AC;
 
     for (int mcu_index = 0; mcu_index < zigzags.size(); ++mcu_index) {
         auto &zigzag = zigzags[mcu_index];
@@ -40,7 +42,8 @@ std::string trans_encoder::encode(std::string &headers, std::vector<std::array<i
             if (zigzag[i] == 0 && zeros_cnt < 0xf) {
                 if (i == 0) {
                     zigzag_rle.push_back(0);
-                    huffman_HXX_test.push_back(0);
+                    huffman_HXX_coef.push_back(0);
+                    huffman_HXX_DC.push_back(0);
                 } else {
                     zeros_cnt++;
                 }
@@ -61,7 +64,12 @@ std::string trans_encoder::encode(std::string &headers, std::vector<std::array<i
             zigzag_rle.push_back(encoded);
             zigzag_val.push_code(value_bits);
 
-            huffman_HXX_test.push_back(encoded);
+            huffman_HXX_coef.push_back(encoded);
+            if (i == 0) {
+                huffman_HXX_DC.push_back(encoded);
+            } else {
+                huffman_HXX_AC.push_back(encoded);
+            }
 
             zeros_cnt = 0;
         }
@@ -69,13 +77,15 @@ std::string trans_encoder::encode(std::string &headers, std::vector<std::array<i
         // insert EOB for DC if necessary
         if (last_non_zero_pos == -1) {
             zigzag_rle.push_back(0);
-            huffman_HXX_test.push_back(0);
+            huffman_HXX_coef.push_back(0);
+            huffman_HXX_DC.push_back(0);
         }
 
         // insert EOB for AC if necessary
         if (last_non_zero_pos != 63) {
             zigzag_rle.push_back(0);
-            huffman_HXX_test.push_back(0);
+            huffman_HXX_coef.push_back(0);
+            huffman_HXX_AC.push_back(0);
         }
     }
 
@@ -141,21 +151,38 @@ std::string trans_encoder::encode(std::string &headers, std::vector<std::array<i
 
     numeric_result.push(zigzag_encoded);
 
-    std::string huffman_message = {huffman_HXX_test.begin(), huffman_HXX_test.end()};
-    std::string huffman_encoded = huffman::encode(huffman_message).first;
+//    std::string huffman_message = {huffman_HXX_coef.begin(), huffman_HXX_coef.end()};
+//    std::string huffman_encoded = huffman::encode(huffman_message).first;
+
+    std::string huffman_message_DC = {huffman_HXX_DC.begin(), huffman_HXX_DC.end()};
+    std::string huffman_encoded_DC = huffman::encode(huffman_message_DC).first;
+
+    std::string huffman_message_AC = {huffman_HXX_AC.begin(), huffman_HXX_AC.end()};
+    std::string huffman_encoded_AC = huffman::encode(huffman_message_AC).first;
 
     bit_vector huffman_result;
-    assert(huffman_encoded.size() < 0xffffff);
-    huffman_result.push_byte(huffman_encoded.size() & 0xff);
-    huffman_result.push_byte((huffman_encoded.size() >> 8) & 0xff);
-    huffman_result.push_byte((huffman_encoded.size() >> 16) & 0xff);
+//    assert(huffman_encoded.size() < 0xffffff);
+//    huffman_result.push_byte(huffman_encoded.size() & 0xff);
+//    huffman_result.push_byte((huffman_encoded.size() >> 8) & 0xff);
+//    huffman_result.push_byte((huffman_encoded.size() >> 16) & 0xff);
+//    bit_vector huffman_bits = bit_vector::from_string(huffman_encoded);
+//    huffman_result.push(huffman_bits);
 
-    bit_vector huffman_bits = bit_vector::from_string(huffman_encoded);
-//    huffman_bits.reverse_bytes();
-    huffman_result.push(huffman_bits);
+    assert(huffman_encoded_DC.size() < 0xffffff);
+    huffman_result.push_byte(huffman_encoded_DC.size() & 0xff);
+    huffman_result.push_byte((huffman_encoded_DC.size() >> 8) & 0xff);
+    huffman_result.push_byte((huffman_encoded_DC.size() >> 16) & 0xff);
+    bit_vector huffman_bits_DC = bit_vector::from_string(huffman_encoded_DC);
+    huffman_result.push(huffman_bits_DC);
+
+    assert(huffman_encoded_AC.size() < 0xffffff);
+    huffman_result.push_byte(huffman_encoded_AC.size() & 0xff);
+    huffman_result.push_byte((huffman_encoded_AC.size() >> 8) & 0xff);
+    huffman_result.push_byte((huffman_encoded_AC.size() >> 16) & 0xff);
+    bit_vector huffman_bits_AC = bit_vector::from_string(huffman_encoded_AC);
+    huffman_result.push(huffman_bits_AC);
+
     huffman_result.push(zigzag_val);
-
-//    size_t min_szie = std::min({huffman_result.size(), numeric_result.size()});
 
     std::string initial_file_content = read_file_to_string(initial_file);
     if (initial_file_content.size() < (result.size() + huffman_result.size()) / 8 &&
