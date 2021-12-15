@@ -1,0 +1,9 @@
+.idea
+cmake-build-debug
+jpeg-source
+archive
+kpeg.log
+encoded
+decoded.jpeg
+test.jpg
+test_test.jpg
